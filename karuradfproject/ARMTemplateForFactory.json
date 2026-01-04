@@ -199,7 +199,10 @@
 									"DimAirline": {},
 									"DimFlight": {},
 									"FactBookings": {},
-									"sinkGold": {}
+									"DimPassenger": {},
+									"sinkGold1": {},
+									"sinkGold2": {},
+									"sinkGold3": {}
 								}
 							},
 							"staging": {},
@@ -1643,6 +1646,13 @@
 								"type": "LinkedServiceReference"
 							},
 							"name": "FactBookings"
+						},
+						{
+							"linkedService": {
+								"referenceName": "linkedservice_datalake",
+								"type": "LinkedServiceReference"
+							},
+							"name": "DimPassenger"
 						}
 					],
 					"sinks": [
@@ -1651,7 +1661,21 @@
 								"referenceName": "linkedservice_datalake",
 								"type": "LinkedServiceReference"
 							},
-							"name": "sinkGold"
+							"name": "sinkGold1"
+						},
+						{
+							"linkedService": {
+								"referenceName": "linkedservice_datalake",
+								"type": "LinkedServiceReference"
+							},
+							"name": "sinkGold2"
+						},
+						{
+							"linkedService": {
+								"referenceName": "linkedservice_datalake",
+								"type": "LinkedServiceReference"
+							},
+							"name": "sinkGold3"
 						}
 					],
 					"transformations": [
@@ -1659,10 +1683,10 @@
 							"name": "AirlineJoin"
 						},
 						{
-							"name": "selectCols"
+							"name": "selectCols2"
 						},
 						{
-							"name": "aggregateAirline"
+							"name": "AggregateAirline"
 						},
 						{
 							"name": "Ranking"
@@ -1672,6 +1696,48 @@
 						},
 						{
 							"name": "alterRow1"
+						},
+						{
+							"name": "FlightJoin"
+						},
+						{
+							"name": "selectCols1"
+						},
+						{
+							"name": "AggregateFlight"
+						},
+						{
+							"name": "windowRanking"
+						},
+						{
+							"name": "filterTopFive"
+						},
+						{
+							"name": "alterRow2"
+						},
+						{
+							"name": "PassengerJoin"
+						},
+						{
+							"name": "selectCols3"
+						},
+						{
+							"name": "AggregatePassenger"
+						},
+						{
+							"name": "UpdatingNULLS"
+						},
+						{
+							"name": "Rankingwindow"
+						},
+						{
+							"name": "AvoidNULLs"
+						},
+						{
+							"name": "filter1"
+						},
+						{
+							"name": "alterRow3"
 						}
 					],
 					"scriptLines": [
@@ -1686,7 +1752,13 @@
 						"     format: 'delta',",
 						"     fileSystem: 'silver',",
 						"     folderPath: 'DimAirline') ~> DimAirline",
-						"source(allowSchemaDrift: true,",
+						"source(output(",
+						"          flight_id as short,",
+						"          flight_number as string,",
+						"          departure_timestamp as string,",
+						"          arrival_timestamp as string",
+						"     ),",
+						"     allowSchemaDrift: true,",
 						"     validateSchema: false,",
 						"     ignoreNoFilesFound: false,",
 						"     format: 'delta',",
@@ -1710,6 +1782,20 @@
 						"     format: 'delta',",
 						"     fileSystem: 'silver',",
 						"     folderPath: 'FactBookings') ~> FactBookings",
+						"source(output(",
+						"          passenger_id as short,",
+						"          full_name as string,",
+						"          gender_flag as string,",
+						"          age as short,",
+						"          country as string,",
+						"          first_name as string",
+						"     ),",
+						"     allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     ignoreNoFilesFound: false,",
+						"     format: 'delta',",
+						"     fileSystem: 'silver',",
+						"     folderPath: 'DimPassenger') ~> DimPassenger",
 						"FactBookings, DimAirline join(FactBookings@airline_id == DimAirline@airline_id,",
 						"     joinType:'left',",
 						"     matchType:'exact',",
@@ -1730,13 +1816,73 @@
 						"          country",
 						"     ),",
 						"     skipDuplicateMapInputs: true,",
-						"     skipDuplicateMapOutputs: true) ~> selectCols",
-						"selectCols aggregate(groupBy(airline_name),",
-						"     Total_Sales = sum(ticket_cost)) ~> aggregateAirline",
-						"aggregateAirline window(desc(Total_Sales, true),",
+						"     skipDuplicateMapOutputs: true) ~> selectCols2",
+						"selectCols2 aggregate(groupBy(airline_name),",
+						"     Total_Sales = sum(ticket_cost)) ~> AggregateAirline",
+						"AggregateAirline window(desc(Total_Sales, true),",
 						"     TopRanking = denseRank()) ~> Ranking",
 						"Ranking filter(TopRanking < 6) ~> filterTop5",
 						"filterTop5 alterRow(insertIf(1==1)) ~> alterRow1",
+						"FactBookings, DimFlight join(FactBookings@flight_id == DimFlight@flight_id,",
+						"     joinType:'left',",
+						"     matchType:'exact',",
+						"     ignoreSpaces: false,",
+						"     broadcast: 'auto')~> FlightJoin",
+						"FlightJoin select(mapColumn(",
+						"          booking_id,",
+						"          passenger_id,",
+						"          flight_id = FactBookings@flight_id,",
+						"          airline_id,",
+						"          origin_airport_id,",
+						"          destination_airport_id,",
+						"          booking_date,",
+						"          ticket_cost,",
+						"          flight_duration_mins,",
+						"          checkin_status,",
+						"          flight_number,",
+						"          departure_timestamp,",
+						"          arrival_timestamp",
+						"     ),",
+						"     skipDuplicateMapInputs: true,",
+						"     skipDuplicateMapOutputs: true) ~> selectCols1",
+						"selectCols1 aggregate(groupBy(flight_number),",
+						"     Total_Cost = sum(ticket_cost)) ~> AggregateFlight",
+						"AvoidNULLs window(desc(Total_Cost, true),",
+						"     TopList = denseRank()) ~> windowRanking",
+						"windowRanking filter(TopList < 6) ~> filterTopFive",
+						"filterTopFive alterRow(insertIf(1==1)) ~> alterRow2",
+						"FactBookings, DimPassenger join(FactBookings@passenger_id == DimPassenger@passenger_id,",
+						"     joinType:'left',",
+						"     matchType:'exact',",
+						"     ignoreSpaces: false,",
+						"     broadcast: 'auto')~> PassengerJoin",
+						"PassengerJoin select(mapColumn(",
+						"          booking_id,",
+						"          passenger_id = FactBookings@passenger_id,",
+						"          flight_id,",
+						"          airline_id,",
+						"          origin_airport_id,",
+						"          destination_airport_id,",
+						"          booking_date,",
+						"          ticket_cost,",
+						"          flight_duration_mins,",
+						"          checkin_status,",
+						"          full_name,",
+						"          gender_flag,",
+						"          age,",
+						"          country,",
+						"          first_name",
+						"     ),",
+						"     skipDuplicateMapInputs: true,",
+						"     skipDuplicateMapOutputs: true) ~> selectCols3",
+						"selectCols3 aggregate(groupBy(country),",
+						"     ticket_cost = sum(ticket_cost)) ~> AggregatePassenger",
+						"AggregatePassenger derive(country = coalesce(country,'AroundTheWorld')) ~> UpdatingNULLS",
+						"UpdatingNULLS window(asc(country, true),",
+						"     TopCountry = denseRank()) ~> Rankingwindow",
+						"AggregateFlight derive(flight_number = coalesce(flight_number,'ALLAIRLINES')) ~> AvoidNULLs",
+						"Rankingwindow filter(TopCountry < 6) ~> filter1",
+						"filter1 alterRow(insertIf(0==0)) ~> alterRow3",
 						"alterRow1 sink(allowSchemaDrift: true,",
 						"     validateSchema: false,",
 						"     format: 'delta',",
@@ -1756,7 +1902,45 @@
 						"     preCommands: [],",
 						"     postCommands: [],",
 						"     skipDuplicateMapInputs: true,",
-						"     skipDuplicateMapOutputs: true) ~> sinkGold"
+						"     skipDuplicateMapOutputs: true) ~> sinkGold1",
+						"alterRow2 sink(allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     format: 'delta',",
+						"     fileSystem: 'gold',",
+						"     folderPath: 'businessView1',",
+						"     overwrite: true,",
+						"     mergeSchema: false,",
+						"     autoCompact: false,",
+						"     optimizedWrite: false,",
+						"     vacuum: 0,",
+						"     deletable: false,",
+						"     insertable: true,",
+						"     updateable: false,",
+						"     upsertable: false,",
+						"     umask: 0022,",
+						"     preCommands: [],",
+						"     postCommands: [],",
+						"     skipDuplicateMapInputs: true,",
+						"     skipDuplicateMapOutputs: true) ~> sinkGold2",
+						"alterRow3 sink(allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     format: 'delta',",
+						"     fileSystem: 'gold',",
+						"     folderPath: 'businessView2',",
+						"     overwrite: true,",
+						"     mergeSchema: false,",
+						"     autoCompact: false,",
+						"     optimizedWrite: false,",
+						"     vacuum: 0,",
+						"     deletable: false,",
+						"     insertable: true,",
+						"     updateable: false,",
+						"     upsertable: false,",
+						"     umask: 0022,",
+						"     preCommands: [],",
+						"     postCommands: [],",
+						"     skipDuplicateMapInputs: true,",
+						"     skipDuplicateMapOutputs: true) ~> sinkGold3"
 					]
 				}
 			},

@@ -168,7 +168,10 @@
 									"DimAirline": {},
 									"DimFlight": {},
 									"FactBookings": {},
-									"sinkGold": {}
+									"DimPassenger": {},
+									"sinkGold1": {},
+									"sinkGold2": {},
+									"sinkGold3": {}
 								}
 							},
 							"staging": {},
