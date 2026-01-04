@@ -1,0 +1,36 @@
+{
+	"$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"value": "karuradfproject"
+		},
+		"linkedservice_datalake_accountKey": {
+			"value": ""
+		},
+		"ls_azuresqldb_password": {
+			"value": ""
+		},
+		"Github_properties_typeProperties_url": {
+			"value": "https://raw.githubusercontent.com/"
+		},
+		"linkedservice_datalake_properties_typeProperties_url": {
+			"value": "https://adfkarurstorage.dfs.core.windows.net/"
+		},
+		"ls_azuresqldb_properties_typeProperties_server": {
+			"value": "adfprojectdb.database.windows.net"
+		},
+		"ls_azuresqldb_properties_typeProperties_database": {
+			"value": "adfprojectdb"
+		},
+		"ls_azuresqldb_properties_typeProperties_userName": {
+			"value": "admin1"
+		},
+		"containerUri": {
+			"value": ""
+		},
+		"containerSasToken": {
+			"value": ""
+		}
+	}
+}
