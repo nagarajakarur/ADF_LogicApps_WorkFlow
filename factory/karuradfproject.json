@@ -1,0 +1,9 @@
+{
+	"name": "karuradfproject",
+	"location": "southindia",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "c587aae8-d2fd-4f55-9ae5-b6a31163fa01",
+		"tenantId": "7163798c-dc2a-4a88-807f-4397ce05ad52"
+	}
+}

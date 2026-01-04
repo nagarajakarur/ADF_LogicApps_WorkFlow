@@ -1,0 +1,6 @@
+{
+	"name": "Karur-SelfHosted",
+	"properties": {
+		"type": "SelfHosted"
+	}
+}
